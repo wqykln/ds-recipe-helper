@@ -180,6 +180,14 @@ main{max-width:640px;margin:0 auto;padding:10px 10px 20px;position:relative;z-in
 .mchip.ban-chip{background:rgba(226,85,85,.1);border-color:rgba(226,85,85,.3)}
 .mchip.ban-chip i{color:var(--hp)}
 .slash{color:var(--ink-mute);font-size:10px;margin:0 1px}
+/* 配方芯片可点击交互 */
+.mchip.clickable{cursor:pointer;transition:background .12s,border-color .12s,color .12s}
+.mchip.clickable:hover{border-color:var(--gold);background:rgba(217,164,65,.22)}
+.mchip.clickable:hover i{color:var(--gold)}
+.mchip.deg-label.clickable:hover{background:rgba(217,164,65,.3)}
+.mchip.fill-chip.clickable:hover{background:rgba(123,167,106,.22);border-color:rgba(123,167,106,.55)}
+.mchip.fill-chip.clickable:hover i{color:#a3d18c}
+.mchip.mchip-alt{cursor:default}
 .caution{font-size:11px;color:#e8a87c;line-height:1.5;margin-top:5px;padding-top:5px;border-top:1px dashed rgba(232,168,124,.3)}
 .primary-mark{background:linear-gradient(90deg,rgba(217,164,65,.2),transparent);color:var(--gold);font-size:12px;font-weight:700;padding:5px 9px;border-radius:6px 6px 0 0;margin-top:8px;letter-spacing:.03em}
 .rec-badge{font-size:10px;padding:1px 6px;border-radius:4px;font-weight:700;letter-spacing:.05em}
@@ -353,6 +361,14 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:30;background:linear-gradient
   <div class="sheet">
     <div class="sheet-head"><span class="t" id="pickerTitle">选择材料</span><button class="iconbtn" id="pickerClose">✕</button></div>
     <div class="sheet-body" id="pickerBody"></div>
+  </div>
+</div>
+
+<!-- 配方芯片浏览弹层:点击"需X点肉"/"剩余X格任选"/具名材料时弹出可选材料 -->
+<div class="modal" id="chipModal">
+  <div class="sheet">
+    <div class="sheet-head"><span class="t" id="chipTitle">可选材料</span><button class="iconbtn" id="chipClose">✕</button></div>
+    <div class="sheet-body" id="chipBody"></div>
   </div>
 </div>
 
@@ -728,25 +744,25 @@ function degAlts(key, num){
   return alts.length ? alts.slice(0,6).join('、') : '';
 }
 /* 自动生成配方示例:基于 rule 解析,给出具体材料组合 */
-/* 配方示例:材料名带小图,返回 HTML */
+/* 配方示例:材料名带小图,返回 HTML;芯片可点击查看可选材料 */
 function matChipHtml(name, num){
   const en = MAT_EN[name];
   const url = en ? localImg(en) : '';
   const img = url ? `<img src="${url}" alt="" loading="lazy" onerror="this.remove()">` : `<span class="mc-emoji">${CAT_EMOJI['肉食']}</span>`;
-  return `<span class="mchip">${img}<i>${esc(name)}${num>1?'×'+num:''}</i></span>`;
+  return `<span class="mchip clickable" data-click="mat" data-name="${esc(name)}">${img}<i>${esc(name)}${num>1?'×'+num:''}</i></span>`;
 }
-/* 度值芯片:"需1点肉" + 可选材料带图,格式更易懂 */
+/* 度值芯片:"需1点肉" + 可选材料带图,格式更易懂;label 部分可点击 */
 function degChipHtml(d){
   const alts = degAlts(d.k, d.num);
   const altList = alts ? alts.split('、').slice(0,3) : [];
-  if(!altList.length) return `<span class="mchip deg-label"><i>需${d.num}点${d.label}</i></span>`;
+  if(!altList.length) return `<span class="mchip deg-label clickable" data-click="deg" data-k="${d.k}" data-num="${d.num}"><i>需${d.num}点${d.label}</i></span>`;
   const chips = altList.map(n=>{
     const en = MAT_EN[n];
     const url = en ? localImg(en) : '';
     const img = url ? `<img src="${url}" alt="" loading="lazy" onerror="this.remove()">` : `<span class="mc-emoji">${CAT_EMOJI['肉食']}</span>`;
     return `<span class="mchip mchip-alt">${img}<i>${esc(n)}</i></span>`;
   }).join('<span class="slash">/</span>');
-  return `<span class="mchip deg-label"><i>需${d.num}点${d.label}</i></span>` + chips;
+  return `<span class="mchip deg-label clickable" data-click="deg" data-k="${d.k}" data-num="${d.num}"><i>需${d.num}点${d.label}</i></span>` + chips;
 }
 function recipeExampleHtml(r){
   const { mats, degs } = extractReq(r.rule);
@@ -761,7 +777,7 @@ function recipeExampleHtml(r){
   const filledMats = mats.reduce((s,m)=>s + (parseInt((m.text.match(/(\d+)/)||[])[1]||'1')),0);
   const filledDegs = degs.reduce((s,d)=>s + d.num,0);
   const remain = Math.max(0, 4 - filledMats - filledDegs);
-  if(remain>0) parts.push(`<span class="mchip fill-chip"><i>剩余${remain}格任选</i></span>`);
+  if(remain>0) parts.push(`<span class="mchip fill-chip clickable" data-click="fill" data-num="${remain}"><i>剩余${remain}格任选</i></span>`);
   return parts.join('<span class="plus">+</span>');
 }
 /* 食谱卡片(移植第一版信息密度:5星+陷阱+点评+材料替代) */
@@ -901,6 +917,22 @@ function closePicker(){
   if(_pickerMulti && cb) cb([..._pickerSel]);
   $('#pickerModal').classList.remove('open');
   _pickerOnClose=null;
+}
+/* 配方芯片浏览器:点击"需X点肉"/"剩余X格任选"/具名材料时弹出可选材料列表 */
+function openChipBrowser(title, list, desc){
+  $('#chipTitle').textContent=title;
+  const body=$('#chipBody');
+  body.innerHTML = (desc?`<div style="font-size:12px;color:var(--ink-dim);margin:0 0 10px;line-height:1.5">${esc(desc)}</div>`:'') +
+    `<div class="matgrid" style="grid-template-columns:repeat(auto-fill,minmax(72px,1fr))">${list.map(n=>{
+      const d=materials[n]||{};
+      const keys=VKEYS.filter(k=>d[k]);
+      const dv=keys.length?keys.map(k=>`<span class="dval" style="background:${VCOLOR[k]}22;color:${VCOLOR[k]}">${VLABEL[k]}${d[k]}</span>`).join(''):'<span class="dval" style="background:#2a2018;color:var(--ink-mute)">填充</span>';
+      return `<div class="mat"><div class="mimg"><span class="mfb">${esc(n.slice(0,1))}</span>${matImgTag(n)}</div><div class="mn">${esc(n)}</div><div class="mv" style="display:block;margin-top:2px">${dv}</div></div>`;
+    }).join('')}</div>`;
+  $('#chipModal').classList.add('open');
+}
+function closeChipBrowser(){
+  $('#chipModal').classList.remove('open');
 }
 const MAT_GROUPS = {
   '肉/鱼':['怪物肉','大肉','小肉','鸡腿','蛙腿','鱼','鳗鱼','龙虾','帽贝','贻贝','水母','鲨鱼鳍','鱼子','紫石斑鱼','霓虹鱼','小丑鱼','叶肉','蝙蝠翅膀','鼹鼠'],
@@ -1228,6 +1260,27 @@ function initNav(){
   };
   $('#pickerClose').onclick=closePicker;
   $('#pickerModal').onclick=e=>{if(e.target===$('#pickerModal'))closePicker();};
+  /* 配方芯片点击:弹出可选材料列表 */
+  $('#chipClose').onclick=closeChipBrowser;
+  $('#chipModal').onclick=e=>{if(e.target===$('#chipModal'))closeChipBrowser();};
+  document.addEventListener('click',e=>{
+    const chip=e.target.closest('.mchip.clickable');
+    if(!chip)return;
+    const type=chip.dataset.click;
+    if(type==='deg'){
+      const k=chip.dataset.k, num=parseFloat(chip.dataset.num);
+      const list=Object.keys(materials).filter(m=>materials[m][k]&&materials[m][k]>=num);
+      openChipBrowser(`需 ${num} 点 ${VLABEL[k]} 的可选材料`, list, `共 ${list.length} 种材料满足此度值要求,任选其一即可。点击右上角 ✕ 关闭。`);
+    }else if(type==='fill'){
+      const all=Object.keys(materials);
+      openChipBrowser('剩余格可选材料', all, '任意可入锅材料,无度值要求,仅作填充用。共 '+all.length+' 种。');
+    }else if(type==='mat'){
+      const name=chip.dataset.name;
+      const alts=matAlts(name);
+      const list=alts?[name,...alts.split('、')]:[name];
+      openChipBrowser(`${name} 的可选材料`, list, '所有满足相同度值的材料,任选其一即可替代。');
+    }
+  });
 }
 
 /* PWA 安装 */
@@ -1244,7 +1297,7 @@ window.addEventListener('appinstalled',()=>{$('#installBtn').hidden=true;});
 /* Service Worker */
 if('serviceWorker' in navigator){
   const swCode=`
-    const C='ds-v3';
+    const C='ds-v4';
     self.addEventListener('install',e=>{self.skipWaiting();e.waitUntil(caches.open(C).then(c=>c.addAll(['./','./index.html'])).catch(()=>{}));});
     self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))));self.clients.claim();});
     self.addEventListener('fetch',e=>{
