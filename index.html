@@ -751,18 +751,9 @@ function matChipHtml(name, num){
   const img = url ? `<img src="${url}" alt="" loading="lazy" onerror="this.remove()">` : `<span class="mc-emoji">${CAT_EMOJI['肉食']}</span>`;
   return `<span class="mchip clickable" data-click="mat" data-name="${esc(name)}">${img}<i>${esc(name)}${num>1?'×'+num:''}</i></span>`;
 }
-/* 度值芯片:"需1点肉" + 可选材料带图,格式更易懂;label 部分可点击 */
+/* 度值芯片:"需1点肉",可点击查看所有可选材料(不再内嵌具体材料图,避免拥挤) */
 function degChipHtml(d){
-  const alts = degAlts(d.k, d.num);
-  const altList = alts ? alts.split('、').slice(0,3) : [];
-  if(!altList.length) return `<span class="mchip deg-label clickable" data-click="deg" data-k="${d.k}" data-num="${d.num}"><i>需${d.num}点${d.label}</i></span>`;
-  const chips = altList.map(n=>{
-    const en = MAT_EN[n];
-    const url = en ? localImg(en) : '';
-    const img = url ? `<img src="${url}" alt="" loading="lazy" onerror="this.remove()">` : `<span class="mc-emoji">${CAT_EMOJI['肉食']}</span>`;
-    return `<span class="mchip mchip-alt">${img}<i>${esc(n)}</i></span>`;
-  }).join('<span class="slash">/</span>');
-  return `<span class="mchip deg-label clickable" data-click="deg" data-k="${d.k}" data-num="${d.num}"><i>需${d.num}点${d.label}</i></span>` + chips;
+  return `<span class="mchip deg-label clickable" data-click="deg" data-k="${d.k}" data-num="${d.num}"><i>需${d.num}点${d.label}</i></span>`;
 }
 function recipeExampleHtml(r){
   const { mats, degs } = extractReq(r.rule);
@@ -1297,7 +1288,7 @@ window.addEventListener('appinstalled',()=>{$('#installBtn').hidden=true;});
 /* Service Worker */
 if('serviceWorker' in navigator){
   const swCode=`
-    const C='ds-v4';
+    const C='ds-v5';
     self.addEventListener('install',e=>{self.skipWaiting();e.waitUntil(caches.open(C).then(c=>c.addAll(['./','./index.html'])).catch(()=>{}));});
     self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))));self.clients.claim();});
     self.addEventListener('fetch',e=>{
