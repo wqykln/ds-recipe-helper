@@ -60,7 +60,6 @@ header{
   cursor:pointer; font-size:15px; transition:.15s; flex-shrink:0;
 }
 .iconbtn:hover{color:var(--gold);border-color:var(--line2)}
-.iconbtn.install{background:linear-gradient(180deg,var(--gold),#b8842e);color:#1a1208;border-color:var(--gold);font-weight:700;font-size:12px;padding:0 12px;width:auto;gap:4px}
 main{max-width:640px;margin:0 auto;padding:10px 10px 20px;position:relative;z-index:2}
 .view{display:none;animation:fade .22s ease}
 .view.active{display:block}
@@ -180,10 +179,6 @@ main{max-width:640px;margin:0 auto;padding:10px 10px 20px;position:relative;z-in
 .mchip.ban-chip{background:rgba(226,85,85,.1);border-color:rgba(226,85,85,.3)}
 .mchip.ban-chip i{color:var(--hp)}
 .slash{color:var(--ink-mute);font-size:10px;margin:0 1px}
-/* 小屏(手机)隐藏右上角自测按钮,保留安装按钮(PWA 安卓可用) */
-@media(max-width:520px){
-  #testBtn{display:none}
-}
 /* 配方芯片可点击交互 */
 .mchip.clickable{cursor:pointer;transition:background .12s,border-color .12s,color .12s}
 .mchip.clickable:hover{border-color:var(--gold);background:rgba(217,164,65,.22)}
@@ -193,15 +188,15 @@ main{max-width:640px;margin:0 auto;padding:10px 10px 20px;position:relative;z-in
 .mchip.fill-chip.clickable:hover i{color:#a3d18c}
 .mchip.mchip-alt{cursor:default}
 /* 食材分类紧凑图标网格 */
-.icon-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:4px}
-.icard{display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px 2px;border-radius:8px;background:var(--bg2);border:1px solid var(--line2);cursor:pointer;transition:border-color .12s,background .12s}
+.icon-grid{display:grid;grid-template-columns:repeat(8,1fr);gap:3px;margin-top:4px}
+.icard{display:flex;flex-direction:column;align-items:center;gap:1px;padding:3px 1px;border-radius:6px;background:var(--bg2);border:1px solid var(--line2);cursor:pointer;transition:border-color .12s,background .12s}
 .icard:hover{border-color:var(--gold);background:rgba(217,164,65,.12)}
-.icard .iimg{width:36px;height:36px;display:flex;align-items:center;justify-content:center;position:relative}
-.icard .iimg img{width:32px;height:32px;object-fit:contain;image-rendering:pixelated}
-.icard .ifb{font-size:18px;font-weight:800;color:var(--gold);font-family:var(--font-display)}
-.icard .ilab{font-size:11px;color:var(--ink);line-height:1.1;text-align:center;word-break:break-all}
-@media(max-width:520px){.icon-grid{grid-template-columns:repeat(6,1fr)}}
-@media(max-width:380px){.icon-grid{grid-template-columns:repeat(5,1fr)}}
+.icard .iimg{width:28px;height:28px;display:flex;align-items:center;justify-content:center;position:relative}
+.icard .iimg img{width:24px;height:24px;object-fit:contain;image-rendering:pixelated}
+.icard .ifb{font-size:14px;font-weight:800;color:var(--gold);font-family:var(--font-display)}
+.icard .ilab{font-size:10px;color:var(--ink-dim);line-height:1.05;text-align:center;word-break:break-all;white-space:nowrap;overflow:hidden;max-width:100%;text-overflow:ellipsis}
+@media(max-width:520px){.icon-grid{grid-template-columns:repeat(7,1fr)}}
+@media(max-width:380px){.icon-grid{grid-template-columns:repeat(6,1fr)}}
 /* 食材详情弹层内容 */
 .raw-detail{display:flex;flex-direction:column;gap:10px}
 .raw-detail .rd-head{display:flex;align-items:center;gap:10px;background:var(--bg2);border:1px solid var(--line2);border-radius:10px;padding:8px 10px}
@@ -335,8 +330,6 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:30;background:linear-gradient
 <body>
 <header>
   <div class="brand"><h1>饥荒食谱助手</h1><span class="sub">单机版</span></div>
-  <button class="iconbtn install" id="installBtn" hidden>⬇安装</button>
-  <button class="iconbtn" id="testBtn" title="自测">✓</button>
 </header>
 
 <main>
@@ -1041,7 +1034,7 @@ function openRawDetail(rf){
     return n.length? `<span class="d po">生吃负面影响:${n.join(',')}</span>`:'';
   }
 
-  $('#rawTitle').textContent = rf.name + ' 食材详情';
+  $('#rawTitle').textContent = rf.name;
   $('#rawBody').innerHTML = `
     <div class="raw-detail">
       <div class="rd-head">
@@ -1065,10 +1058,6 @@ function openRawDetail(rf){
           <h5>🔥 烤熟</h5>
           ${cells(r,c)}
         </div>
-      </div>
-      <div class="rd-foot">
-        <div class="bx"><b>烹饪建议:</b><div class="tip">${rf.tip||'烤熟后属性变化如上图;可直接吃,也可入锅。'}</div></div>
-        <div class="bx"><b>保质期:</b><div class="tip">生吃、烤熟单独存放时逐步变质;建议干燥箱/冷藏箱延长或尽快食用。</div></div>
       </div>
     </div>
   `;
@@ -1413,12 +1402,6 @@ function initNav(){
     $$('.view').forEach(v=>v.classList.remove('active'));
     $('#view-'+t.dataset.v).classList.add('active');
   });
-  $('#testBtn').onclick=()=>{
-    $$('.tab').forEach(x=>x.classList.remove('on'));
-    $$('.view').forEach(v=>v.classList.remove('active'));
-    $('#view-test').classList.add('active');
-    runTests();
-  };
   $('#pickerClose').onclick=closePicker;
   $('#pickerModal').onclick=e=>{if(e.target===$('#pickerModal'))closePicker();};
   /* 配方芯片点击:弹出可选材料列表 */
@@ -1464,21 +1447,10 @@ function initNav(){
   });
 }
 
-/* PWA 安装 */
-let deferredPrompt=null;
-window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredPrompt=e;$('#installBtn').hidden=false;});
-$('#installBtn').onclick=async()=>{
-  if(!deferredPrompt)return;
-  deferredPrompt.prompt();
-  await deferredPrompt.userChoice;
-  deferredPrompt=null; $('#installBtn').hidden=true;
-};
-window.addEventListener('appinstalled',()=>{$('#installBtn').hidden=true;});
-
 /* Service Worker */
 if('serviceWorker' in navigator){
   const swCode=`
-    const C='ds-v7';
+    const C='ds-v8';
     self.addEventListener('install',e=>{self.skipWaiting();e.waitUntil(caches.open(C).then(c=>c.addAll(['./','./index.html'])).catch(()=>{}));});
     self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))));self.clients.claim();});
     self.addEventListener('fetch',e=>{
