@@ -1104,6 +1104,48 @@ function renderSlots(){
   }).join('');
 }
 /* 可匹配食谱:满4格=判定结果;不满4格=含已选材料的食谱(反查) */
+/* extractReq 缓存,避免重复正则解析 */
+const REQ_CACHE = new Map();
+function getReq(rule){
+  if(REQ_CACHE.has(rule)) return REQ_CACHE.get(rule);
+  const req = extractReq(rule);
+  REQ_CACHE.set(rule, req);
+  return req;
+}
+/* 兼容性检查:已选材料 sel 是否能与食谱 r 搭配
+   判定:sel 不违反 r 的禁止条件,且 sel 中至少有一个材料对 r 有用
+   用于 1-2 格已选时快速过滤(避免 55^3/55^2 穷举) */
+function isCompatible(r, sel){
+  const req = getReq(r.rule);
+  // 1. 检查 DISALLOW 禁止条件(tags + 具名材料)
+  const dis = DISALLOW[r.id];
+  if(dis){
+    for(const m of sel){
+      if(dis.mats.includes(m)) return false;
+      const d = materials[m]||{};
+      for(const t of dis.tags){ if(d[t]>0) return false; }
+    }
+  }
+  // 2. 检查 rule 内禁止条件 !t.v.xxx / !t.n["x"]
+  //    extractReq 把 !t.v.xxx 转成中文标签(如"肉"),!t.n["x"] 保持材料名
+  for(const b of req.bans){
+    const vkey = Object.keys(VLABEL).find(k=>VLABEL[k]===b);
+    if(vkey){
+      for(const m of sel){ if((materials[m]||{})[vkey]>0) return false; }
+    } else {
+      if(sel.includes(b)) return false;
+    }
+  }
+  // 3. sel 中至少有一个材料对 r 有用(具名需求或满足度值需求)
+  let useful = false;
+  for(const m of sel){
+    if(req.mats.some(mt=>mt.name===m)){ useful=true; break; }
+    const d = materials[m]||{};
+    for(const deg of req.degs){ if(d[deg.k]>0){ useful=true; break; } }
+    if(useful) break;
+  }
+  return useful;
+}
 function matchableRecipes(){
   const sel=potSlots.filter(x=>x);
   if(sel.length===0) return [];
@@ -1117,38 +1159,30 @@ function matchableRecipes(){
     }
     return out;
   }
-  // 1-3格:动态模拟填充,找出所有可制食物
-  // 优化:1-2格穷举所有填充;3格只试每个材料作为第4格(55次)
-  const selCounts={};
-  for(const m of sel) selCounts[m]=(selCounts[m]||0)+1;
   const remain=4-sel.length;
   const out=[];
-  const seen=new Set();
   const candMats=Object.keys(materials);
-  function tryJudge(cur){
-    const t=buildT(cur);
-    for(const r of SORTED){
-      const fn=getRuleFn(r.rule);
-      try{
-        if(fn(t) && r.id!=='wetgoop'){
-          if(!seen.has(r.id)){
-            seen.add(r.id);
-            out.push({r, hit:[...sel], primary:false});
-          }
-        }
-      }catch(e){}
-    }
-  }
   if(remain===1){
-    // 3格:试每个材料作为第4格
+    // 3格:穷举每个材料作为第4格(55次),精准找出所有可制食物
+    const seen=new Set();
+    function tryJudge(cur){
+      const t=buildT(cur);
+      for(const r of SORTED){
+        const fn=getRuleFn(r.rule);
+        try{
+          if(fn(t) && r.id!=='wetgoop'){
+            if(!seen.has(r.id)){ seen.add(r.id); out.push({r, hit:[...sel], primary:false}); }
+          }
+        }catch(e){}
+      }
+    }
     for(const m of candMats){ tryJudge([...sel, m]); }
   } else {
-    // 1-2格:穷举所有填充组合(55^1=55 或 55^2=3025,可接受)
-    function fillRec(cur){
-      if(cur.length===4){ tryJudge(cur); return; }
-      for(const m of candMats){ cur.push(m); fillRec(cur); cur.pop(); }
+    // 1-2格:兼容性检查(58次遍历),避免 55^3=16万 / 55^2=3千 穷举
+    for(const r of SORTED){
+      if(r.id==='wetgoop') continue;
+      if(isCompatible(r, sel)) out.push({r, hit:[...sel], primary:false});
     }
-    fillRec([...sel]);
   }
   out.sort((a,b)=>b.r.priority-a.r.priority);
   return out;
