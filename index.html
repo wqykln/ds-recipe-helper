@@ -180,6 +180,10 @@ main{max-width:640px;margin:0 auto;padding:10px 10px 20px;position:relative;z-in
 .mchip.ban-chip{background:rgba(226,85,85,.1);border-color:rgba(226,85,85,.3)}
 .mchip.ban-chip i{color:var(--hp)}
 .slash{color:var(--ink-mute);font-size:10px;margin:0 1px}
+/* 小屏(手机)隐藏右上角自测按钮,保留安装按钮(PWA 安卓可用) */
+@media(max-width:520px){
+  #testBtn{display:none}
+}
 /* 配方芯片可点击交互 */
 .mchip.clickable{cursor:pointer;transition:background .12s,border-color .12s,color .12s}
 .mchip.clickable:hover{border-color:var(--gold);background:rgba(217,164,65,.22)}
@@ -188,6 +192,40 @@ main{max-width:640px;margin:0 auto;padding:10px 10px 20px;position:relative;z-in
 .mchip.fill-chip.clickable:hover{background:rgba(123,167,106,.22);border-color:rgba(123,167,106,.55)}
 .mchip.fill-chip.clickable:hover i{color:#a3d18c}
 .mchip.mchip-alt{cursor:default}
+/* 食材分类紧凑图标网格 */
+.icon-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:4px}
+.icard{display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px 2px;border-radius:8px;background:var(--bg2);border:1px solid var(--line2);cursor:pointer;transition:border-color .12s,background .12s}
+.icard:hover{border-color:var(--gold);background:rgba(217,164,65,.12)}
+.icard .iimg{width:36px;height:36px;display:flex;align-items:center;justify-content:center;position:relative}
+.icard .iimg img{width:32px;height:32px;object-fit:contain;image-rendering:pixelated}
+.icard .ifb{font-size:18px;font-weight:800;color:var(--gold);font-family:var(--font-display)}
+.icard .ilab{font-size:11px;color:var(--ink);line-height:1.1;text-align:center;word-break:break-all}
+@media(max-width:520px){.icon-grid{grid-template-columns:repeat(6,1fr)}}
+@media(max-width:380px){.icon-grid{grid-template-columns:repeat(5,1fr)}}
+/* 食材详情弹层内容 */
+.raw-detail{display:flex;flex-direction:column;gap:10px}
+.raw-detail .rd-head{display:flex;align-items:center;gap:10px;background:var(--bg2);border:1px solid var(--line2);border-radius:10px;padding:8px 10px}
+.raw-detail .rd-head .e{width:44px;height:44px;display:flex;align-items:center;justify-content:center;background:#2a2018;border-radius:8px;border:1px solid var(--line2);position:relative;flex-shrink:0}
+.raw-detail .rd-head .e img{width:40px;height:40px;object-fit:contain;image-rendering:pixelated}
+.raw-detail .rd-head .n{font-size:15px;font-weight:700;color:var(--ink);font-family:var(--font-display)}
+.raw-detail .rd-head .en{font-size:11px;color:var(--ink-mute);font-weight:400;margin-left:4px}
+.raw-detail .rd-head .tags{margin-top:2px;display:flex;gap:4px;flex-wrap:wrap}
+.raw-detail .rd-head .tags .tg{font-size:10px;padding:1px 6px;border-radius:10px;background:var(--bg3);color:var(--ink-dim);border:1px solid var(--line2)}
+.raw-detail .rd-compare{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.raw-detail .rd-col{background:var(--bg2);border:1px solid var(--line2);border-radius:10px;padding:8px}
+.raw-detail .rd-col h5{margin:0 0 6px;font-size:12px;font-weight:700;color:var(--ink);font-family:var(--font-display)}
+.raw-detail .rd-col.raw h5{color:#b07a5a}
+.raw-detail .rd-col.ck h5{color:#d08a2e}
+.raw-detail .rd-col .row2{display:flex;gap:6px;flex-wrap:wrap}
+.raw-detail .rd-col .d{font-size:13px;display:inline-flex;align-items:center;gap:3px;padding:3px 7px;border-radius:8px}
+.raw-detail .rd-col .d.hp{background:rgba(201,74,90,.12);color:#e37281}
+.raw-detail .rd-col .d.hu{background:rgba(224,132,58,.12);color:#ec9a50}
+.raw-detail .rd-col .d.sa{background:rgba(107,127,201,.12);color:#8e9fe0}
+.raw-detail .rd-col .d.na{background:#2a2018;color:var(--ink-mute);font-size:12px}
+.raw-detail .rd-col .d.po{background:rgba(168,58,58,.15);color:#e07171}
+.delta-up{color:#7bb06a;font-size:11px;margin-left:3px;font-weight:700}
+.delta-dn{color:#c94a5a;font-size:11px;margin-left:3px;font-weight:700}
+.delta-eq{color:var(--ink-mute);font-size:11px;margin-left:3px}
 .caution{font-size:11px;color:#e8a87c;line-height:1.5;margin-top:5px;padding-top:5px;border-top:1px dashed rgba(232,168,124,.3)}
 .primary-mark{background:linear-gradient(90deg,rgba(217,164,65,.2),transparent);color:var(--gold);font-size:12px;font-weight:700;padding:5px 9px;border-radius:6px 6px 0 0;margin-top:8px;letter-spacing:.03em}
 .rec-badge{font-size:10px;padding:1px 6px;border-radius:4px;font-weight:700;letter-spacing:.05em}
@@ -369,6 +407,14 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:30;background:linear-gradient
   <div class="sheet">
     <div class="sheet-head"><span class="t" id="chipTitle">可选材料</span><button class="iconbtn" id="chipClose">✕</button></div>
     <div class="sheet-body" id="chipBody"></div>
+  </div>
+</div>
+
+<!-- 食材详情弹层:食材分类下,点图标弹出 生吃 vs 烤熟 数值对比 -->
+<div class="modal" id="rawModal">
+  <div class="sheet">
+    <div class="sheet-head"><span class="t" id="rawTitle">食材详情</span><button class="iconbtn" id="rawClose">✕</button></div>
+    <div class="sheet-body" id="rawBody"></div>
   </div>
 </div>
 
@@ -632,6 +678,34 @@ function buildT(mats){
   return { v, n, mats: mats.slice() };
 }
 const SORTED = recipes.map((r,i)=>({r,i})).sort((a,b)=> b.r.priority - a.r.priority || a.i - b.i).map(x=>x.r);
+
+/* 各菜谱禁用规则(禁品类tags + 禁具名材料)
+   基于 Wiki "Must not have" 列 + 代码排除规则,2026-09 联网核实。
+   DISALLOW[id] = {tags: [...vkey], mats: ["具名材料"...]}
+*/
+const DISALLOW = {
+  'meatballs':       {tags:['inedible'], mats:[]},
+  'meatystew':       {tags:['inedible'], mats:[]},
+  'monsterlasagna':  {tags:['inedible'], mats:[]},
+  'honeynuggets':    {tags:['inedible'], mats:[]},
+  'honeyham':        {tags:['inedible'], mats:[]},
+  'pierogi':         {tags:['inedible'], mats:[]},
+  'bacon':           {tags:['veg'], mats:[]},
+  'buttermuffin':    {tags:['meat'], mats:[]},
+  'dragonpie':       {tags:['meat'], mats:[]},
+  'jam':             {tags:['inedible','meat','veg'], mats:[]},
+  'fruitmedley':     {tags:['inedible','meat','veg'], mats:[]},
+  'flowersalad':     {tags:['inedible','meat','egg','sweetener','fruit'], mats:[]},
+  'trailmix':        {tags:['meat','veg','egg','dairy'], mats:[]},
+  'melonsicle':      {tags:['meat','veg','egg'], mats:[]},
+  'guacamole':       {tags:['fruit'], mats:[]},
+  'icecream':        {tags:['inedible','meat','egg','veg'], mats:[]},
+  'taffy':           {tags:['meat'], mats:[]},
+  'ratatouille':     {tags:['meat','inedible'], mats:[]},
+  'bananapop':       {tags:['meat','fish'], mats:[]},
+  'asparagussoup':   {tags:['meat','inedible'], mats:[]},
+  'powdercake':      {tags:['meat','fruit'], mats:[]},
+};
 const RULE_CACHE = new Map();
 function getRuleFn(rule){
   if(RULE_CACHE.has(rule)) return RULE_CACHE.get(rule);
@@ -768,7 +842,15 @@ function recipeExampleHtml(r){
   const filledMats = mats.reduce((s,m)=>s + (parseInt((m.text.match(/(\d+)/)||[])[1]||'1')),0);
   const filledDegs = degs.reduce((s,d)=>s + d.num,0);
   const remain = Math.max(0, 4 - filledMats - filledDegs);
-  if(remain>0) parts.push(`<span class="mchip fill-chip clickable" data-click="fill" data-num="${remain}"><i>剩余${remain}格任选</i></span>`);
+  if(remain>0) parts.push(`<span class="mchip fill-chip clickable" data-click="fill" data-num="${remain}" data-rid="${esc(r.id)}"><i>剩余${remain}格任选</i></span>`);
+  // 如果该菜有禁用规则,在填充芯片后面追加"禁X"红色标签(视觉提示,无需点击也能一眼看到)
+  const dis = DISALLOW[r.id];
+  if(dis && (dis.tags.length || dis.mats.length)){
+    const labels = [];
+    dis.tags.forEach(t=> labels.push(`禁${VLABEL[t]||t}`));
+    dis.mats.forEach(m=> labels.push(`禁${m}`));
+    parts.push(`<span class="mchip ban-chip" title="${esc(labels.join('、'))}"><i>${labels.slice(0,3).join('·')}${labels.length>3?' 等'+labels.length+'项':''}</i></span>`);
+  }
   return parts.join('<span class="plus">+</span>');
 }
 /* 食谱卡片(移植第一版信息密度:5星+陷阱+点评+材料替代) */
@@ -835,7 +917,7 @@ function rawFoodCard(rf){
       <div class="emoji"><span class="fb">${rf.cat==='肉食'?'🍖':rf.cat==='甜点'?'🍰':'🥬'}</span>${img}</div>
       <div class="info">
         <div class="name">${esc(rf.name)} <span class="en2">${esc(rf.en||'')}</span></div>
-        <div class="tags" style="margin-top:3px"><span class="tag cat">生食材</span></div>
+        <div class="tags" style="margin-top:3px"><span class="tag cat">食材</span></div>
       </div>
     </div>
     <div class="raw-grid">
@@ -924,6 +1006,76 @@ function openChipBrowser(title, list, desc){
 }
 function closeChipBrowser(){
   $('#chipModal').classList.remove('open');
+}
+/* 食材详情弹层:生吃 vs 烤熟 三围对比 + 差值 + 度值标签 */
+function openRawDetail(rf){
+  const en=rf.en||'';
+  const url=en? localImg(en):'';
+  const img=url? `<img src="${url}" alt="" loading="lazy" onerror="this.remove()">`:'';
+  // 度值标签(从materials查,若有同名)
+  const md=materials[rf.name];
+  const tags=[rf.cat,rf.dlc||'通用'].filter(Boolean);
+  const degDv=md? VKEYS.filter(k=>md[k]).map(k=>`<span class="tg" style="background:${VCOLOR[k]}22;color:${VCOLOR[k]}">${VLABEL[k]}${md[k]}</span>`):[];
+  const tagHtml=tags.map(t=>`<span class="tg">${t}</span>`).join('')+degDv.join('');
+
+  const r=rf.raw, c=rf.ck;
+  function cell(label, raw, ck, cls, unit){
+    if(!raw && !ck) return `<span class="d na">${label}无</span>`;
+    const diff = (ck||0) - (raw||0);
+    const delta = diff===0? `<span class="delta-eq">= 不变</span>` : diff>0? `<span class="delta-up">↑+${diff}</span>` : `<span class="delta-dn">↓${diff}</span>`;
+    return `<span class="d ${cls}">${label}<span class="n">${ck||0}${unit||''}</span>${delta}</span>`;
+  }
+  function cells(r,c){
+    return `<div class="row2">
+      ${cell('血',r.p,c.p,'hp','')}
+      ${cell('饱',r.h,c.h,'hu','')}
+      ${cell('SAN',r.s,c.s,'sa','')}
+      ${(c.p&&c.p<0)||(c.h&&c.h<0)||(c.s&&c.s<0)? `<span class="d po">烤熟有负面影响</span>`:''}
+    </div>`;
+  }
+  // 生吃自身的负值显示
+  function rawNeg(r){
+    const n=[];
+    if(r.p && r.p<0) n.push(`生命${r.p}`);
+    if(r.s && r.s<0) n.push(`SAN${r.s}`);
+    return n.length? `<span class="d po">生吃负面影响:${n.join(',')}</span>`:'';
+  }
+
+  $('#rawTitle').textContent = rf.name + ' 食材详情';
+  $('#rawBody').innerHTML = `
+    <div class="raw-detail">
+      <div class="rd-head">
+        <div class="e">${img}</div>
+        <div style="flex:1;min-width:0">
+          <div><span class="n">${esc(rf.name)}</span><span class="en">${esc(en)}</span></div>
+          <div class="tags">${tagHtml}</div>
+        </div>
+      </div>
+      <div class="rd-compare">
+        <div class="rd-col raw">
+          <h5>🥩 生吃</h5>
+          <div class="row2">
+            ${r.p? `<span class="d hp">血<span class="n">${r.p}</span></span>`:`<span class="d na">血无</span>`}
+            ${r.h? `<span class="d hu">饱<span class="n">${r.h}</span></span>`:`<span class="d na">饱无</span>`}
+            ${r.s? `<span class="d sa">SAN<span class="n">${r.s}</span></span>`:`<span class="d na">SAN无</span>`}
+            ${rawNeg(r)}
+          </div>
+        </div>
+        <div class="rd-col ck">
+          <h5>🔥 烤熟</h5>
+          ${cells(r,c)}
+        </div>
+      </div>
+      <div class="rd-foot">
+        <div class="bx"><b>烹饪建议:</b><div class="tip">${rf.tip||'烤熟后属性变化如上图;可直接吃,也可入锅。'}</div></div>
+        <div class="bx"><b>保质期:</b><div class="tip">生吃、烤熟单独存放时逐步变质;建议干燥箱/冷藏箱延长或尽快食用。</div></div>
+      </div>
+    </div>
+  `;
+  $('#rawModal').classList.add('open');
+}
+function closeRawDetail(){
+  $('#rawModal').classList.remove('open');
 }
 const MAT_GROUPS = {
   '肉/鱼':['怪物肉','大肉','小肉','鸡腿','蛙腿','鱼','鳗鱼','龙虾','帽贝','贻贝','水母','鲨鱼鳍','鱼子','紫石斑鱼','霓虹鱼','小丑鱼','叶肉','蝙蝠翅膀','鼹鼠'],
@@ -1091,7 +1243,7 @@ function runTests(){
 
 /* 图鉴:三组筛选 + 效果分类 TOP 推荐 */
 let sortKey='rec', catSel='全部', dlcSel='全部', effSel='全部';
-const CATS=['全部','肉食','素食','甜点','特殊','生食材'];
+const CATS=['全部','肉食','素食','甜点','特殊','食材'];
 const EFFS=[
   {k:'全部',label:'全部'},
   {k:'饱食',label:'🍞 饱食'},
@@ -1184,10 +1336,10 @@ function renderTOP(baseList){
   });
 }
 function filteredList(){
-  // 生食材分类:返回 rawFoods 包装为类 recipe 对象
-  if(catSel==='生食材'){
+  // 食材分类:返回 rawFoods 包装为类 recipe 对象
+  if(catSel==='食材'){
     return (DATA.rawFoods||[]).map(rf=>({
-      id:'raw_'+rf.en, name:rf.name, en:rf.en, cat:'生食材',
+      id:'raw_'+rf.en, name:rf.name, en:rf.en, cat:'食材',
       dlc:'通用', hunger:Math.max(rf.raw.h,rf.ck.h), hp:Math.max(rf.raw.p,rf.ck.p), sanity:Math.max(rf.raw.s,rf.ck.s),
       spoil:0, cook:0, cost:0, priority:0, stars:3, _raw:rf
     }));
@@ -1216,14 +1368,32 @@ function renderList(){
     }
   });
   const base = filteredList();
-  if(catSel!=='生食材') renderTOP(base); else $('#topWrap').innerHTML='';
+  if(catSel!=='食材') renderTOP(base); else $('#topWrap').innerHTML='';
   const titles = [];
   if(dlcSel!=='全部') titles.push(dlcSel);
   if(effSel!=='全部') titles.push(effSel);
   if(catSel!=='全部') titles.push(catSel);
   $('#listTitle').textContent = (titles.length? titles.join(' · '):'所有菜谱') + `（共 ${list.length} 道）`;
-  $('#list').innerHTML = list.length ? list.map(r=> r._raw ? rawFoodCard(r._raw) : recipeCard(r)).join('') : '<div class="empty">当前筛选无匹配菜谱</div>';
-  $$('.card').forEach(c=>c.onclick=()=>c.classList.toggle('open'));
+  if(catSel==='食材'){
+    // 食材分类:紧凑图标网格,一行7个,点击图标弹出生吃/烤熟对比详情
+    $('#list').innerHTML = list.length ? `<div class="icon-grid">${list.map(r=>{
+      const rf=r._raw;
+      const en=rf.en||'';
+      const url=en? localImg(en):'';
+      const img=url? `<img src="${url}" alt="" loading="lazy" onerror="this.remove()">` : `<span class="ifb">${esc(rf.name.slice(0,1))}</span>`;
+      return `<div class="icard" data-rawid="${esc(rf.en)}" title="${esc(rf.name)}"><div class="iimg">${img}</div><div class="ilab">${esc(rf.name)}</div></div>`;
+    }).join('')}</div>` : '<div class="empty">当前筛选无匹配菜谱</div>';
+    $('#list').onclick=e=>{
+      const c=e.target.closest('.icard');if(!c)return;
+      const id=c.dataset.rawid;
+      const rf=(DATA.rawFoods||[]).find(x=>x.en===id);if(!rf)return;
+      openRawDetail(rf);
+    };
+  } else {
+    $('#list').innerHTML = list.length ? list.map(r=> r._raw ? rawFoodCard(r._raw) : recipeCard(r)).join('') : '<div class="empty">当前筛选无匹配菜谱</div>';
+    $$('.card').forEach(c=>c.onclick=()=>c.classList.toggle('open'));
+    $('#list').onclick=null;
+  }
 }
 function initCodex(){
   renderChips('dlcChips',DLCS,dlcSel,'data-dlc');
@@ -1254,6 +1424,9 @@ function initNav(){
   /* 配方芯片点击:弹出可选材料列表 */
   $('#chipClose').onclick=closeChipBrowser;
   $('#chipModal').onclick=e=>{if(e.target===$('#chipModal'))closeChipBrowser();};
+  /* 食材详情弹层 */
+  $('#rawClose').onclick=closeRawDetail;
+  $('#rawModal').onclick=e=>{if(e.target===$('#rawModal'))closeRawDetail();};
   document.addEventListener('click',e=>{
     const chip=e.target.closest('.mchip.clickable');
     if(!chip)return;
@@ -1263,8 +1436,25 @@ function initNav(){
       const list=Object.keys(materials).filter(m=>materials[m][k]&&materials[m][k]>=num);
       openChipBrowser(`需 ${num} 点 ${VLABEL[k]} 的可选材料`, list, `共 ${list.length} 种材料满足此度值要求,任选其一即可。点击右上角 ✕ 关闭。`);
     }else if(type==='fill'){
-      const all=Object.keys(materials);
-      openChipBrowser('剩余格可选材料', all, '任意可入锅材料,无度值要求,仅作填充用。共 '+all.length+' 种。');
+      const rid=chip.dataset.rid;
+      const r=recipes.find(x=>x.id===rid);
+      // 应用禁材过滤:根据禁用tag + 禁用具体材料
+      const disT=DISALLOW[rid]? DISALLOW[rid].tags: [];
+      const disM=DISALLOW[rid]? DISALLOW[rid].mats: [];
+      const all=Object.keys(materials).filter(m=>{
+        if(disM.includes(m))return false;
+        if(disT.length){
+          const d=materials[m]||{};
+          // 有任一条禁用tag且该材料具备这个tag,就排除
+          for(const t of disT) if(d[t]>0) return false;
+        }
+        return true;
+      });
+      const dis=[];
+      disT.forEach(t=>dis.push(`禁${VLABEL[t]||t}`));
+      disM.forEach(m=>dis.push(`禁${m}`));
+      const desc = `任意可入锅材料作填充,无度值要求。共 ${all.length} 种。${dis.length? '<br><b style="color:var(--hp)">本菜'+dis.join(' / ')+',以下列表已自动过滤。</b>':'未发现禁用项。'}`;
+      openChipBrowser('剩余格可选材料', all, desc);
     }else if(type==='mat'){
       const name=chip.dataset.name;
       const alts=matAlts(name);
@@ -1288,7 +1478,7 @@ window.addEventListener('appinstalled',()=>{$('#installBtn').hidden=true;});
 /* Service Worker */
 if('serviceWorker' in navigator){
   const swCode=`
-    const C='ds-v6';
+    const C='ds-v7';
     self.addEventListener('install',e=>{self.skipWaiting();e.waitUntil(caches.open(C).then(c=>c.addAll(['./','./index.html'])).catch(()=>{}));});
     self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))));self.clients.claim();});
     self.addEventListener('fetch',e=>{
