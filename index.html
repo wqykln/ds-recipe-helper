@@ -660,6 +660,7 @@ const MAT_SCAR = scarcity;
 const VKEYS = ['meat','veg','fruit','egg','fish','monster','sweetener','inedible','frozen','dairy','bug','deco'];
 const VLABEL = {meat:'肉',veg:'菜',fruit:'果',egg:'蛋',fish:'鱼',monster:'怪',sweetener:'甜',inedible:'不可食',frozen:'冰',dairy:'乳',bug:'虫',deco:'饰'};
 const VCOLOR = {meat:'#c75a4a',veg:'#7fb069',fruit:'#d96c6c',egg:'#e8c84a',fish:'#5aa6d8',monster:'#9b6bb0',sweetener:'#e8c84a',inedible:'#8a7a66',frozen:'#8ec5e8',dairy:'#f0e6c8',bug:'#9bb86b',deco:'#e88ad0'};
+const VLABEL_REV = {}; { for(const k in VLABEL) VLABEL_REV[VLABEL[k]]=k; }
 const CAT_EMOJI = {'肉食':'🍖','素食':'🥬','甜点':'🍰','特殊':'✨'};
 
 function buildT(mats){
@@ -719,15 +720,20 @@ function judgePot(mats){
   }
   return 'wetgoop';
 }
-function recipeById(id){ return recipes.find(r=>r.id===id); }
+const RECIPE_MAP = new Map(recipes.map(r=>[r.id,r]));
+function recipeById(id){ return RECIPE_MAP.get(id); }
 
 /* ====== 性价比评分 ====== */
 const COST_MULT = {0:1,1:1,2:1.5,3:4,4:10,5:25,6:60};
+const SCORE_CACHE = new Map();
 function recipeScore(r){
+  if(SCORE_CACHE.has(r.id)) return SCORE_CACHE.get(r.id);
   const dlcPen = (r.dlc==='海难'||r.dlc==='哈姆雷特') ? 1 : 0;
   const spoilPen = r.spoil<=6 ? 0.65 : 1;
   const denom = COST_MULT[Math.min(r.cost + dlcPen, 6)];
-  return (r.hunger + r.hp*1.5 + r.sanity*1.5) / denom * spoilPen;
+  const s = (r.hunger + r.hp*1.5 + r.sanity*1.5) / denom * spoilPen;
+  SCORE_CACHE.set(r.id, s);
+  return s;
 }
 
 /* ====== 从 rule 解析材料需求(信息来自权威 rule,非额外功能) ====== */
@@ -774,7 +780,7 @@ function degHtml(name){
   return keys.map(k=>`<span class="dval" style="background:${VCOLOR[k]}22;color:${VCOLOR[k]}">${VLABEL[k]}${d[k]}</span>`).join('');
 }
 function reqHtml(r){
-  const { mats, degs, bans } = extractReq(r.rule);
+  const { mats, degs, bans } = getReq(r.rule);
   let h = '<div class="req"><span class="lab">需:</span>';
   const parts = [];
   for(const mt of mats){
@@ -793,24 +799,33 @@ function reqHtml(r){
   return h;
 }
 /* 同类替代:返回满足该材料度值的其他材料(排除自身) */
+const MATALTS_CACHE = new Map();
 function matAlts(name){
+  if(MATALTS_CACHE.has(name)) return MATALTS_CACHE.get(name);
   const d = materials[name]||{};
   const keys = VKEYS.filter(k=>d[k]);
-  if(!keys.length) return '';
+  if(!keys.length){ MATALTS_CACHE.set(name,''); return ''; }
   const alts = Object.keys(materials).filter(m=>{
     if(m===name) return false;
     const dm = materials[m];
     return keys.some(k=>dm[k] && Math.abs(dm[k]-d[k])<0.01);
   });
-  return alts.length ? alts.slice(0,6).join('、') : '';
+  const res = alts.length ? alts.slice(0,6).join('、') : '';
+  MATALTS_CACHE.set(name, res);
+  return res;
 }
 /* 度值替代:返回满足该度值要求的材料(取度值≥num 的前6个) */
+const DEGALTS_CACHE = new Map();
 function degAlts(key, num){
+  const ck = key+':'+num;
+  if(DEGALTS_CACHE.has(ck)) return DEGALTS_CACHE.get(ck);
   const alts = Object.keys(materials).filter(m=>{
     const d = materials[m];
     return d[key] && d[key]>=num;
   });
-  return alts.length ? alts.slice(0,6).join('、') : '';
+  const res = alts.length ? alts.slice(0,6).join('、') : '';
+  DEGALTS_CACHE.set(ck, res);
+  return res;
 }
 /* 自动生成配方示例:基于 rule 解析,给出具体材料组合 */
 /* 配方示例:材料名带小图,返回 HTML;芯片可点击查看可选材料 */
@@ -825,7 +840,7 @@ function degChipHtml(d){
   return `<span class="mchip deg-label clickable" data-click="deg" data-k="${d.k}" data-num="${d.num}"><i>需${d.num}点${d.label}</i></span>`;
 }
 function recipeExampleHtml(r){
-  const { mats, degs } = extractReq(r.rule);
+  const { mats, degs } = getReq(r.rule);
   const parts = [];
   for(const mt of mats){
     const num = parseInt((mt.text.match(/(\d+)/)||[])[1]||'1');
@@ -868,9 +883,9 @@ function featTags(r){
   if(r.cost>=4) t.push('材料费');
   if(r.cook>=40) t.push('烹饪久');
   // 稀缺度判定
-  const req = extractReq(r.rule);
+  const req = getReq(r.rule);
   let maxScar=0;
-  for(const m in req.mats){ if(MAT_SCAR[m]) maxScar=Math.max(maxScar,MAT_SCAR[m]); }
+  for(const mt of req.mats){ if(MAT_SCAR[mt.name]) maxScar=Math.max(maxScar,MAT_SCAR[mt.name]); }
   if(maxScar>=5) t.push('材料稀贵');
   else if(maxScar===0 && r.cost<=2) t.push('材料易得');
   return t;
@@ -1129,7 +1144,7 @@ function isCompatible(r, sel){
   // 2. 检查 rule 内禁止条件 !t.v.xxx / !t.n["x"]
   //    extractReq 把 !t.v.xxx 转成中文标签(如"肉"),!t.n["x"] 保持材料名
   for(const b of req.bans){
-    const vkey = Object.keys(VLABEL).find(k=>VLABEL[k]===b);
+    const vkey = VLABEL_REV[b];
     if(vkey){
       for(const m of sel){ if((materials[m]||{})[vkey]>0) return false; }
     } else {
@@ -1226,11 +1241,7 @@ function renderPotStatus(){
     }
   }
   $('#potResult').innerHTML=html;
-  // 绑定卡片展开
-  $$('#potResult .card').forEach(c=>c.onclick=()=>c.classList.toggle('open'));
-  // 绑定展开/收起按钮
-  const eb=$('#expandBtn'); if(eb) eb.onclick=()=>{potResultExpanded=true;renderPotStatus();};
-  const cb=$('#collapseBtn'); if(cb) cb.onclick=()=>{potResultExpanded=false;renderPotStatus();$('#potResult').scrollTop=0;};
+  // 卡片展开/收起 + 展开按钮均由 initPot 中的事件委托处理,无需每次渲染重新绑定
 }
 function potRefresh(){ renderSlots(); renderPotMatGrid(); renderPotStatus(); }
 function initPot(){
@@ -1253,6 +1264,16 @@ function initPot(){
     if(potSlots[i]){ potSlots[i]=null; potResultExpanded=false; potRefresh(); }
   };
   $('#clearPot').onclick=()=>{potSlots=[null,null,null,null];potResultExpanded=false;potRefresh();};
+  // 事件委托:卡片展开 + 展开/收起按钮(避免每次 renderPotStatus 重新逐个绑定)
+  $('#potResult').onclick=e=>{
+    const btn=e.target.closest('#expandBtn,#collapseBtn');
+    if(btn){
+      if(btn.id==='expandBtn'){potResultExpanded=true;renderPotStatus();}
+      else{potResultExpanded=false;renderPotStatus();$('#potResult').scrollTop=0;}
+      return;
+    }
+    const c=e.target.closest('.card'); if(c) c.classList.toggle('open');
+  };
 }
 
 /* 自测 */
@@ -1290,10 +1311,13 @@ function renderChips(elId, arr, sel, attr){
   }).join('');
 }
 /* 稀缺权重:值越小=越容易获取,用于"材料好获取"的推荐排序惩罚 */
+const EASE_CACHE = new Map();
 function easePenalty(r){
-  const req = extractReq(r);
+  if(EASE_CACHE.has(r.id)) return EASE_CACHE.get(r.id);
+  const req = getReq(r.rule);
   let sca = 0;
-  for(const m in req.mats){ if(MAT_SCAR[m]) sca = Math.max(sca, MAT_SCAR[m]); }
+  for(const mt of req.mats){ if(MAT_SCAR[mt.name]) sca = Math.max(sca, MAT_SCAR[mt.name]); }
+  EASE_CACHE.set(r.id, sca);
   return sca; // 0-6
 }
 /* 效果分类 TOP:每个效果下,取 对应维度高回复 + 稀缺度低(材料易获取) + 性价比 排序,取前 4 */
@@ -1355,10 +1379,6 @@ function renderTOP(baseList){
       </div>
     </div>`;
   $('#topWrap').innerHTML = html;
-  $$('.topcard').forEach(c=>c.onclick=()=>{
-    const card = $(`.card[data-id="${c.dataset.id}"]`);
-    if(card){ card.classList.add('hl'); setTimeout(()=>card.classList.remove('hl'),1500); card.scrollIntoView({behavior:'smooth',block:'center'}); }
-  });
 }
 function filteredList(){
   // 食材分类:返回 rawFoods 包装为类 recipe 对象
@@ -1380,8 +1400,8 @@ function filteredList(){
   });
 }
 function renderList(){
-  let list=filteredList();
-  list=list.slice().sort((a,b)=>{
+  const base=filteredList();
+  let list=base.slice().sort((a,b)=>{
     switch(sortKey){
       case 'rec':return (b.stars||3)-(a.stars||3) || recipeScore(b)-recipeScore(a);
       case 'hunger':return b.hunger-a.hunger;
@@ -1392,7 +1412,6 @@ function renderList(){
       default:return b.priority-a.priority;
     }
   });
-  const base = filteredList();
   if(catSel!=='食材') renderTOP(base); else $('#topWrap').innerHTML='';
   const titles = [];
   if(dlcSel!=='全部') titles.push(dlcSel);
@@ -1416,8 +1435,7 @@ function renderList(){
     };
   } else {
     $('#list').innerHTML = list.length ? list.map(r=> r._raw ? rawFoodCard(r._raw) : recipeCard(r)).join('') : '<div class="empty">当前筛选无匹配菜谱</div>';
-    $$('.card').forEach(c=>c.onclick=()=>c.classList.toggle('open'));
-    $('#list').onclick=null;
+    $('#list').onclick=e=>{const c=e.target.closest('.card');if(c)c.classList.toggle('open');};
   }
 }
 function initCodex(){
@@ -1425,6 +1443,12 @@ function initCodex(){
   renderChips('effectChips',EFFS,effSel,'data-eff');
   renderChips('catChips',CATS,catSel,'data-cat');
   renderList();
+  // 事件委托:TOP 推荐卡片点击跳转(避免每次 renderTOP 重新逐个绑定)
+  $('#topWrap').onclick=e=>{
+    const c=e.target.closest('.topcard'); if(!c) return;
+    const card=$(`.card[data-id="${c.dataset.id}"]`);
+    if(card){ card.classList.add('hl'); setTimeout(()=>card.classList.remove('hl'),1500); card.scrollIntoView({behavior:'smooth',block:'center'}); }
+  };
   $('#catChips').onclick=e=>{const t=e.target.closest('.chip');if(!t)return;catSel=t.dataset.v;renderChips('catChips',CATS,catSel,'data-cat');renderList();};
   $('#effectChips').onclick=e=>{const t=e.target.closest('.chip');if(!t)return;effSel=t.dataset.v;renderChips('effectChips',EFFS,effSel,'data-eff');renderList();};
   $('#dlcChips').onclick=e=>{const t=e.target.closest('.chip');if(!t)return;dlcSel=t.dataset.v;renderChips('dlcChips',DLCS,dlcSel,'data-dlc');renderList();};
@@ -1503,7 +1527,7 @@ function initNav(){
 /* Service Worker */
 if('serviceWorker' in navigator){
   const swCode=`
-    const C='ds-v10';
+    const C='ds-v11';
     self.addEventListener('install',e=>{self.skipWaiting();e.waitUntil(caches.open(C).then(c=>c.addAll(['./','./index.html'])).catch(()=>{}));});
     self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))));self.clients.claim();});
     self.addEventListener('fetch',e=>{
