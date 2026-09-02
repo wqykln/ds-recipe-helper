@@ -617,9 +617,14 @@ function matChipHtml(name, num){
   const img = url ? `<img src="${url}" alt="" loading="lazy" onerror="this.remove()">` : `<span class="mc-emoji">${CAT_EMOJI['肉食']}</span>`;
   return `<span class="mchip clickable" data-click="mat" data-name="${esc(name)}">${img}<i>${esc(name)}${num>1?'×'+num:''}</i></span>`;
 }
-/* 度值芯片:"需1点肉",可点击查看所有可选材料(不再内嵌具体材料图,避免拥挤) */
+/* 度值芯片:按操作符(>=/>/===)区分显示,可点击查看所有可选材料 */
 function degChipHtml(d){
-  return `<span class="mchip deg-label clickable" data-click="deg" data-k="${d.k}" data-num="${d.num}"><i>需${d.num}点${d.label}</i></span>`;
+  let txt;
+  if(d.op==='===') txt = `需恰好${d.num}点${d.label}`;
+  else if(d.op==='>'&&d.num===0) txt = `需任意${d.label}`;
+  else if(d.op==='>') txt = `需>${d.num}点${d.label}`;
+  else txt = `需${d.num}点${d.label}`;
+  return `<span class="mchip deg-label clickable" data-click="deg" data-k="${d.k}" data-num="${d.num}"><i>${txt}</i></span>`;
 }
 function recipeExampleHtml(r){
   const { mats, degs } = getReq(r.rule);
@@ -628,11 +633,13 @@ function recipeExampleHtml(r){
     const num = parseInt((mt.text.match(/(\d+)/)||[])[1]||'1');
     parts.push(matChipHtml(mt.name, num));
   }
-  for(const d of degs){
+  // 跳过<=/<等上限条件(约束而非需求,在caution中说明)
+  const reqDegs = degs.filter(d=>d.op!=='<='&&d.op!=='<'&&d.op!=='!=');
+  for(const d of reqDegs){
     parts.push(degChipHtml(d));
   }
   const filledMats = mats.reduce((s,m)=>s + (parseInt((m.text.match(/(\d+)/)||[])[1]||'1')),0);
-  const filledDegs = degs.reduce((s,d)=>s + d.num,0);
+  const filledDegs = reqDegs.reduce((s,d)=>s + d.num,0);
   const remain = Math.max(0, 4 - filledMats - filledDegs);
   if(remain>0) parts.push(`<span class="mchip fill-chip clickable" data-click="fill" data-num="${remain}" data-rid="${esc(r.id)}"><i>剩余${remain}格任选</i></span>`);
   // 如果该菜有禁用规则,在填充芯片后面追加"禁X"红色标签(视觉提示,无需点击也能一眼看到)
@@ -1247,7 +1254,7 @@ function initNav(){
     if(type==='deg'){
       const k=chip.dataset.k, num=parseFloat(chip.dataset.num);
       const list=Object.keys(materials).filter(m=>materials[m][k]>0);
-      openChipBrowser(`需 ${num} 点 ${VLABEL[k]} 的可选材料`, list, `共 ${list.length} 种材料含${VLABEL[k]}度,可任选组合累积达到${num}点。点击右上角 ✕ 关闭。`);
+      openChipBrowser(`含${VLABEL[k]}度的可选材料`, list, `共 ${list.length} 种材料含${VLABEL[k]}度,可任选组合使用。点击右上角 ✕ 关闭。`);
     }else if(type==='fill'){
       const rid=chip.dataset.rid;
       const r=recipes.find(x=>x.id===rid);
@@ -1297,7 +1304,7 @@ function initNav(){
 /* Service Worker */
 if('serviceWorker' in navigator){
   const swCode=`
-    const C='ds-v13';
+    const C='ds-v14';
     self.addEventListener('install',e=>{self.skipWaiting();e.waitUntil(caches.open(C).then(c=>c.addAll(['./','./index.html'])).catch(()=>{}));});
     self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))));self.clients.claim();});
     self.addEventListener('fetch',e=>{
