@@ -692,7 +692,6 @@ function featTags(r){
 }
 function recipeCard(r, opts){
   opts=opts||{};
-  const score = recipeScore(r);
   const rec = r.stars||3;
   const recLabels={5:'极力推荐',4:'推荐',3:'一般',2:'不推荐',1:'别做'};
   return `<div class="card" data-id="${esc(r.id)}">
@@ -707,7 +706,6 @@ function recipeCard(r, opts){
           <span class="stat" style="color:var(--sanity)">+${r.sanity}<i>精神</i></span>
         </div>
       </div>
-      <div class="score"><span class="slab">性价比</span><b>${score.toFixed(1)}</b></div>
     </div>
     <div class="info-block">
       <div class="formula">${recipeExampleHtml(r)}</div>
@@ -1082,16 +1080,14 @@ function initPot(){
 }
 
 /* 图鉴:三组筛选 + 效果分类 TOP 推荐 */
-let sortKey='rec', catSel='全部', dlcSel='全部', effSel='全部';
-const CATS=['全部','肉食','素食','甜点','特殊','食材'];
+let sortKey='rec', catSel='', dlcSel='', effSel='';
+const CATS=['肉食','素食','甜点','特殊','食材'];
 const EFFS=[
-  {k:'全部',label:'全部'},
   {k:'饱食',label:'🍞 饱食'},
   {k:'生命',label:'❤️ 生命'},
   {k:'精神',label:'🧠 精神'},
 ];
 const DLCS=[
-  {k:'全部',label:'全部',match:()=>true},
   {k:'通用',label:'通用(本体+巨人国)',match:r=>r.dlc==='原版'||r.dlc==='巨人国'},
   {k:'海难',label:'海难',match:r=>r.dlc==='海难'},
   {k:'哈姆雷特',label:'哈姆雷特',match:r=>r.dlc==='哈姆雷特'},
@@ -1161,13 +1157,12 @@ function renderTOP(baseList){
       <div class="top-title">${title} <span class="top-reason">${reason}</span></div>
       <div class="top-scroll">
         ${list.map(r=>{
-          const scaStars = easePenalty(r);
-          const scaIcon = '🟢🟢🟡🟠🔴🔴🔴'.slice(0,scaStars*2);
-          const meta = dimKey ? `+${r[dimKey]}` : `★${recipeScore(r).toFixed(1)}`;
+          const dimLabels = {'hunger':'饱食','hp':'生命','sanity':'精神'};
+          const meta = dimKey ? `+${r[dimKey]} ${dimLabels[dimKey]}` : `★${recipeScore(r).toFixed(1)}`;
           return `<div class="topcard" data-id="${esc(r.id)}">
             <div class="tpi"><span class="fb">${CAT_EMOJI[r.cat]||'🍴'}</span>${foodImgTag(r)}</div>
             <div class="tname">${esc(r.name)}</div>
-            <div class="tmeta">${meta} · <span title="稀缺度">${scaIcon||'🟢'}</span></div>
+            <div class="tmeta">${meta}</div>
           </div>`;
         }).join('')}
       </div>
@@ -1184,9 +1179,9 @@ function filteredList(){
     }));
   }
   return SORTED.filter(r=>{
-    if(catSel!=='全部' && r.cat!==catSel) return false;
+    if(catSel && r.cat!==catSel) return false;
     const d = DLCS.find(x=>x.k===dlcSel); if(d && !d.match(r)) return false;
-    if(effSel!=='全部'){
+    if(effSel){
       const kMap = {'饱食':'hunger','生命':'hp','精神':'sanity'};
       const key = kMap[effSel]; if(!r[key] || r[key]<=0) return false;
     }
@@ -1195,7 +1190,11 @@ function filteredList(){
 }
 function renderList(){
   const base=filteredList();
+  // 选中效果维度时自动按该维度降序排列
+  const kMap = {'饱食':'hunger','生命':'hp','精神':'sanity'};
+  const effKey = kMap[effSel];
   let list=base.slice().sort((a,b)=>{
+    if(effKey) return b[effKey]-a[effKey];
     switch(sortKey){
       case 'rec':return (b.stars||3)-(a.stars||3) || recipeScore(b)-recipeScore(a);
       case 'hunger':return b.hunger-a.hunger;
@@ -1206,11 +1205,11 @@ function renderList(){
       default:return b.priority-a.priority;
     }
   });
-  if(catSel!=='食材') renderTOP(base); else $('#topWrap').innerHTML='';
+  if(catSel!=='食材' && effSel) renderTOP(base); else $('#topWrap').innerHTML='';
   const titles = [];
-  if(dlcSel!=='全部') titles.push(dlcSel);
-  if(effSel!=='全部') titles.push(effSel);
-  if(catSel!=='全部') titles.push(catSel);
+  if(dlcSel) titles.push(dlcSel);
+  if(effSel) titles.push(effSel);
+  if(catSel) titles.push(catSel);
   $('#listTitle').textContent = (titles.length? titles.join(' · '):'所有菜谱') + `（共 ${list.length} 道）`;
   if(catSel==='食材'){
     // 食材分类:紧凑图标网格,一行7个,点击图标弹出生吃/烤熟对比详情
@@ -1243,9 +1242,9 @@ function initCodex(){
     const card=$(`.card[data-id="${c.dataset.id}"]`);
     if(card){ card.classList.add('hl'); setTimeout(()=>card.classList.remove('hl'),1500); card.scrollIntoView({behavior:'smooth',block:'center'}); }
   };
-  $('#catChips').onclick=e=>{const t=e.target.closest('.chip');if(!t)return;catSel=t.dataset.v;renderChips('catChips',CATS,catSel,'data-cat');renderList();};
-  $('#effectChips').onclick=e=>{const t=e.target.closest('.chip');if(!t)return;effSel=t.dataset.v;renderChips('effectChips',EFFS,effSel,'data-eff');renderList();};
-  $('#dlcChips').onclick=e=>{const t=e.target.closest('.chip');if(!t)return;dlcSel=t.dataset.v;renderChips('dlcChips',DLCS,dlcSel,'data-dlc');renderList();};
+  $('#catChips').onclick=e=>{const t=e.target.closest('.chip');if(!t)return;catSel=(catSel===t.dataset.v)?'':t.dataset.v;renderChips('catChips',CATS,catSel,'data-cat');renderList();};
+  $('#effectChips').onclick=e=>{const t=e.target.closest('.chip');if(!t)return;effSel=(effSel===t.dataset.v)?'':t.dataset.v;renderChips('effectChips',EFFS,effSel,'data-eff');renderList();};
+  $('#dlcChips').onclick=e=>{const t=e.target.closest('.chip');if(!t)return;dlcSel=(dlcSel===t.dataset.v)?'':t.dataset.v;renderChips('dlcChips',DLCS,dlcSel,'data-dlc');renderList();};
 }
 
 /* 导航 */
@@ -1323,7 +1322,7 @@ _backTop.onclick=()=>window.scrollTo({top:0,behavior:'smooth'});
 /* Service Worker */
 if('serviceWorker' in navigator){
   const swCode=`
-    const C='ds-v16';
+    const C='ds-v17';
     self.addEventListener('install',e=>{self.skipWaiting();e.waitUntil(caches.open(C).then(c=>c.addAll(['./','./index.html'])).catch(()=>{}));});
     self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))));self.clients.claim();});
     self.addEventListener('fetch',e=>{
