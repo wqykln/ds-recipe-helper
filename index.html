@@ -572,25 +572,6 @@ function degHtml(name){
   if(!keys.length) return '<span class="dval" style="background:#2a2018;color:var(--ink-mute)">填充</span>';
   return keys.map(k=>`<span class="dval" style="background:${VCOLOR[k]}22;color:${VCOLOR[k]}">${VLABEL[k]}${d[k]}</span>`).join('');
 }
-function reqHtml(r){
-  const { mats, degs, bans } = getReq(r.rule);
-  let h = '<div class="req"><span class="lab">需:</span>';
-  const parts = [];
-  for(const mt of mats){
-    // 具名材料 + 同类替代列表
-    const alts = matAlts(mt.name);
-    parts.push(`<span class="mat">${esc(mt.text)}</span>${alts?`<span class="alts">${alts}</span>`:''}`);
-  }
-  for(const d of degs){
-    // 度值要求 + 满足该度值的材料列表
-    const alts = degAlts(d.k, d.num);
-    parts.push(`<span class="deg">${d.label}${d.op}${d.num}${alts?` <span class="alts">(${alts})</span>`:''}</span>`);
-  }
-  h += parts.join(' ') || '<span class="deg">任意</span>';
-  if(bans.length) h += ` <span class="deg" style="color:var(--hp)">禁 ${bans.join('、')}</span>`;
-  h += '</div>';
-  return h;
-}
 /* 同类替代:返回满足该材料度值的其他材料(排除自身) */
 const MATALTS_CACHE = new Map();
 function matAlts(name){
@@ -605,19 +586,6 @@ function matAlts(name){
   });
   const res = alts.length ? alts.slice(0,6).join('、') : '';
   MATALTS_CACHE.set(name, res);
-  return res;
-}
-/* 度值替代:返回满足该度值要求的材料(取度值≥num 的前6个) */
-const DEGALTS_CACHE = new Map();
-function degAlts(key, num){
-  const ck = key+':'+num;
-  if(DEGALTS_CACHE.has(ck)) return DEGALTS_CACHE.get(ck);
-  const alts = Object.keys(materials).filter(m=>{
-    const d = materials[m];
-    return d[key] > 0;
-  });
-  const res = alts.length ? alts.slice(0,6).join('、') : '';
-  DEGALTS_CACHE.set(ck, res);
   return res;
 }
 /* 自动生成配方示例:基于 rule 解析,给出具体材料组合 */
@@ -640,18 +608,30 @@ function degChipHtml(d){
 function recipeExampleHtml(r){
   const { mats, degs } = getReq(r.rule);
   const parts = [];
-  for(const mt of mats){
-    const num = parseInt((mt.text.match(/(\d+)/)||[])[1]||'1');
-    parts.push(matChipHtml(mt.name, num));
-  }
-  // 跳过<=/<等上限条件(约束而非需求,在caution中说明)
-  const reqDegs = degs.filter(d=>d.op!=='<='&&d.op!=='<'&&d.op!=='!=');
-  for(const d of reqDegs){
-    parts.push(degChipHtml(d));
-  }
-  const filledMats = mats.reduce((s,m)=>s + (parseInt((m.text.match(/(\d+)/)||[])[1]||'1')),0);
-  const filledDegs = reqDegs.reduce((s,d)=>s + d.num,0);
-  const remain = Math.max(0, 4 - filledMats - filledDegs);
+  // 检测OR条件组(如 芦笋或萝卜, 菜度或果度)
+  const orMats=[], orDegs=[];
+  const reOrM=/\(t\.n\["([^"]+)"\]\s*(?:>=?|>)\s*(\d+)\s*\|\|\s*t\.n\["([^"]+)"\]\s*(?:>=?|>)\s*(\d+)\s*\)/g;
+  let om; while((om=reOrM.exec(r.rule))) orMats.push({n1:om[1],u1:+om[2],n2:om[3],u2:+om[4]});
+  const reOrD=/\(t\.v\.(\w+)\s*(>=|>)\s*(\d*\.?\d+)\s*\|\|\s*t\.v\.(\w+)\s*(>=|>)\s*(\d*\.?\d+)\s*\)/g;
+  let od; while((od=reOrD.exec(r.rule))) orDegs.push({k1:od[1],l1:VLABEL[od[1]],n1:parseFloat(od[3]),k2:od[4],l2:VLABEL[od[4]],n2:parseFloat(od[6])});
+  // 从mats/degs中移除OR组涉及的项
+  const orMN=new Set(); for(const m of orMats){orMN.add(m.n1);orMN.add(m.n2);}
+  const fMats=mats.filter(mt=>!orMN.has(mt.name));
+  const orDK=new Set(); for(const d of orDegs){orDK.add(d.k1);orDK.add(d.k2);}
+  const fDegs=degs.filter(d=>!orDK.has(d.k));
+  // 渲染具名材料
+  for(const mt of fMats){const num=parseInt((mt.text.match(/(\d+)/)||[])[1]||'1');parts.push(matChipHtml(mt.name,num));}
+  // 渲染OR具名材料(如"芦笋或萝卜×1")
+  for(const m of orMats){const mn=Math.min(m.u1,m.u2);parts.push(`<span class="mchip name-chip clickable" data-click="mat" data-name="${esc(m.n1)}"><i>${m.n1}或${m.n2}${mn>1?'×'+mn:''}</i></span>`);}
+  // 渲染度值要求(跳过上限条件)
+  const reqDegs=fDegs.filter(d=>d.op!=='<='&&d.op!=='<'&&d.op!=='!=');
+  for(const d of reqDegs){parts.push(degChipHtml(d));}
+  // 渲染OR度值要求(如"需0.5点菜或果")
+  for(const d of orDegs){const mn=Math.min(d.n1,d.n2);parts.push(`<span class="mchip deg-label clickable" data-click="deg" data-k="${d.k1}" data-num="${mn}"><i>需${mn}点${d.l1}或${d.l2}</i></span>`);}
+  // 计算:OR材料算1格,OR度值算min,剩余格数向下取整
+  const filledMats=fMats.reduce((s,m)=>s+(parseInt((m.text.match(/(\d+)/)||[])[1]||'1')),0)+orMats.reduce((s,m)=>s+Math.min(m.u1,m.u2),0);
+  const filledDegs=reqDegs.reduce((s,d)=>s+d.num,0)+orDegs.reduce((s,d)=>s+Math.min(d.n1,d.n2),0);
+  const remain=Math.max(0,Math.floor(4-filledMats-filledDegs));
   if(remain>0) parts.push(`<span class="mchip fill-chip clickable" data-click="fill" data-num="${remain}" data-rid="${esc(r.id)}"><i>剩余${remain}格任选</i></span>`);
   // 如果该菜有禁用规则,在填充芯片后面追加"禁X"红色标签(视觉提示,无需点击也能一眼看到)
   const dis = DISALLOW[r.id];
@@ -668,27 +648,6 @@ function starsHtml(n){
   let h='';
   for(let i=1;i<=5;i++) h+=`<span class="pt ${i<=n?'on':''}">●</span>`;
   return h;
-}
-/* 自动生成简短特色标签 */
-function featTags(r){
-  const t=[];
-  if(r.hunger>=100) t.push('饱食拉满');
-  else if(r.hunger>=60) t.push('高饱食');
-  if(r.hp>=40) t.push('回血王');
-  else if(r.hp>=20) t.push('回血好');
-  if(r.sanity>=30) t.push('回san王');
-  if(r.spoil>=15) t.push('耐储存');
-  else if(r.spoil<=3) t.push('保质短');
-  if(r.hp<0||r.sanity<0) t.push('有负面');
-  if(r.cost>=4) t.push('材料费');
-  if(r.cook>=40) t.push('烹饪久');
-  // 稀缺度判定
-  const req = getReq(r.rule);
-  let maxScar=0;
-  for(const mt of req.mats){ if(MAT_SCAR[mt.name]) maxScar=Math.max(maxScar,MAT_SCAR[mt.name]); }
-  if(maxScar>=5) t.push('材料稀贵');
-  else if(maxScar===0 && r.cost<=2) t.push('材料易得');
-  return t;
 }
 function recipeCard(r, opts){
   opts=opts||{};
@@ -1110,32 +1069,15 @@ function easePenalty(r){
   EASE_CACHE.set(r.id, sca);
   return sca; // 0-6
 }
-/* 效果分类 TOP:每个效果下,取 对应维度高回复 + 稀缺度低(材料易获取) + 性价比 排序,取前 4 */
-function topBy(effDim, baseList, n=4){
-  const kMap = {'饱食':'hunger','生命':'hp','精神':'sanity'};
-  const key = kMap[effDim];
-  if(!key) return [];
-  const byVal = Math.max(40, ...baseList.map(r=>r[key]))*0.35;
-  return baseList
-    .filter(r=>r[key]>=byVal && r[key]>0)
-    .map(r=>{
-      const pen = easePenalty(r);
-      const s = recipeScore(r) - pen*5 - r.cost*3;
-      return {r,s};
-    })
-    .sort((a,b)=>b.s-a.s)
-    .slice(0,n)
-    .map(x=>x.r);
-}
 function renderTOP(baseList){
   // TOP5:按当前效果维度排序(无效果维度时用综合性价比)
   const kMap = {'饱食':'hunger','生命':'hp','精神':'sanity'};
   const dimKey = kMap[effSel];
   let list, title, reason;
   if(dimKey){
-    // 按该维度回复量排序,排除该维度无回复的菜
+    // 按该维度回复量排序,排除该维度无回复+稀缺度≥5(黄油/曼德拉草等极难获取)的菜
     list = baseList
-      .filter(r=>r[dimKey]>0 && r.hp>=0 && r.sanity>=0 && r.id!=='wetgoop' && r.id!=='powdercake')
+      .filter(r=>r[dimKey]>0 && r.hp>=0 && r.sanity>=0 && r.id!=='wetgoop' && r.id!=='powdercake' && easePenalty(r)<5)
       .map(r=>({r, s: r[dimKey] / (1 + easePenalty(r)*0.5 + r.cost*0.25)}))
       .sort((a,b)=>b.s-a.s)
       .slice(0,5).map(x=>x.r);
@@ -1322,7 +1264,7 @@ _backTop.onclick=()=>window.scrollTo({top:0,behavior:'smooth'});
 /* Service Worker */
 if('serviceWorker' in navigator){
   const swCode=`
-    const C='ds-v17';
+    const C='ds-v18';
     self.addEventListener('install',e=>{self.skipWaiting();e.waitUntil(caches.open(C).then(c=>c.addAll(['./','./index.html'])).catch(()=>{}));});
     self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))));self.clients.claim();});
     self.addEventListener('fetch',e=>{
