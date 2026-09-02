@@ -603,7 +603,7 @@ function degAlts(key, num){
   if(DEGALTS_CACHE.has(ck)) return DEGALTS_CACHE.get(ck);
   const alts = Object.keys(materials).filter(m=>{
     const d = materials[m];
-    return d[key] && d[key]>=num;
+    return d[key] > 0;
   });
   const res = alts.length ? alts.slice(0,6).join('、') : '';
   DEGALTS_CACHE.set(ck, res);
@@ -1246,8 +1246,8 @@ function initNav(){
     const type=chip.dataset.click;
     if(type==='deg'){
       const k=chip.dataset.k, num=parseFloat(chip.dataset.num);
-      const list=Object.keys(materials).filter(m=>materials[m][k]&&materials[m][k]>=num);
-      openChipBrowser(`需 ${num} 点 ${VLABEL[k]} 的可选材料`, list, `共 ${list.length} 种材料满足此度值要求,任选其一即可。点击右上角 ✕ 关闭。`);
+      const list=Object.keys(materials).filter(m=>materials[m][k]>0);
+      openChipBrowser(`需 ${num} 点 ${VLABEL[k]} 的可选材料`, list, `共 ${list.length} 种材料含${VLABEL[k]}度,可任选组合累积达到${num}点。点击右上角 ✕ 关闭。`);
     }else if(type==='fill'){
       const rid=chip.dataset.rid;
       const r=recipes.find(x=>x.id===rid);
@@ -1297,7 +1297,7 @@ function initNav(){
 /* Service Worker */
 if('serviceWorker' in navigator){
   const swCode=`
-    const C='ds-v12';
+    const C='ds-v13';
     self.addEventListener('install',e=>{self.skipWaiting();e.waitUntil(caches.open(C).then(c=>c.addAll(['./','./index.html'])).catch(()=>{}));});
     self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))));self.clients.claim();});
     self.addEventListener('fetch',e=>{
