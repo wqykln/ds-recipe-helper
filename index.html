@@ -678,7 +678,8 @@ function recipeExampleHtml(r){
     const labels = [];
     dis.tags.forEach(t=> labels.push(`无${VLABEL[t]||t}`));
     dis.mats.forEach(m=> labels.push(`无${m}`));
-    parts.push(`<span class="mchip ban-chip clickable" data-click="ban" data-rid="${esc(r.id)}" title="点击查看禁用材料清单"><i>${labels.slice(0,3).join('·')}${labels.length>3?' 等'+labels.length+'项':''}</i></span>`);
+    const banHtml = `<span class="mchip ban-chip clickable" data-click="ban" data-rid="${esc(r.id)}" title="点击查看禁用材料清单"><i>${labels.slice(0,3).join('·')}${labels.length>3?' 等'+labels.length+'项':''}</i></span>`;
+    return parts.join('<span class="plus">+</span>') + (parts.length ? ' ' : '') + banHtml;
   }
   return parts.join('<span class="plus">+</span>');
 }
@@ -1280,11 +1281,11 @@ function initNav(){
         return true;
       });
       const dis=[];
-      disT.forEach(t=>dis.push(`无${VLABEL[t]||t}`));
-      disM.forEach(m=>dis.push(`无${m}`));
+      disT.forEach(t=>dis.push(`${VLABEL[t]||t}类`));
+      disM.forEach(m=>dis.push(m));
       const upperLabels=[...upperDegs].map(k=>`${VLABEL[k]||k}度受限`);
       const allDis=[...dis, ...upperLabels];
-      const desc = `任意可入锅材料作填充,无度值要求。共 ${all.length} 种。${allDis.length? '<br><b style="color:var(--hp)">本菜'+allDis.join(' / ')+',以下列表已自动过滤。</b>':'未发现禁用项。'}`;
+      const desc = `以下 ${all.length} 种材料可作填充(无度值要求)。${allDis.length? '<br><b style="color:var(--hp)">本菜禁止放入: '+allDis.join('、')+',已自动过滤。</b>':''}`;
       openChipBrowser('剩余格可选材料', all, desc);
     }else if(type==='mat'){
       const name=chip.dataset.name;
@@ -1304,9 +1305,9 @@ function initNav(){
       });
       const list=[...set];
       const labels=[];
-      disT.forEach(t=>labels.push(`无${VLABEL[t]||t}`));
-      disM.forEach(m=>labels.push(`无${m}`));
-      const desc=`本菜 <b style="color:var(--hp)">${labels.join(' / ')}</b>,以下 ${list.length} 种材料任一入锅都会导致判定失败。点击右上角 ✕ 关闭。`;
+      disT.forEach(t=>labels.push(`${VLABEL[t]||t}类材料`));
+      disM.forEach(m=>labels.push(m));
+      const desc=`本菜禁止放入: <b style="color:var(--hp)">${labels.join('、')}</b>。<br>以下 ${list.length} 种材料放入后将无法做出本菜,点击右上角 ✕ 关闭。`;
       openChipBrowser('禁用材料清单', list, desc);
     }
   });
@@ -1323,7 +1324,7 @@ _backTop.onclick=()=>window.scrollTo({top:0,behavior:'smooth'});
 /* Service Worker */
 if('serviceWorker' in navigator){
   const swCode=`
-    const C='ds-v21';
+    const C='ds-v22';
     self.addEventListener('install',e=>{self.skipWaiting();e.waitUntil(caches.open(C).then(c=>c.addAll(['./','./index.html'])).catch(()=>{}));});
     self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))));self.clients.claim();});
     self.addEventListener('fetch',e=>{
